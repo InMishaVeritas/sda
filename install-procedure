@@ -1,0 +1,389 @@
+CAPS
+Guide d’installation de l’environnement AWS pour le projet Scan Augmenté par l’IA
+Les services utilisés :
+VPC : Cloud isolé (définir les points de terminaison et contrôle du trafic)
+S3 : Stockage de données cloud
+Bedrock : Bibliothèque de LLMs (dont Claude 3.5 Sonnet)
+Lambda : Exécution automatique de code serverless
+Step Function : Orchestrateur Macrh
+Cloudwatch : Gestion des logs
+IAM: Création des rôles, politiques (contrôle de l’accès aux ressources)
+Procédure pour chaque service :
+NOTE1 : Il est nécessaire de suivre cette procédure dans l’ordre suivant.
+NOTE2 : Toutes les références au VPC dépendent du VPC qui sera créé sur l’env de recette et de prod. En cours de création actuellement.
+NOTE3 : Toutes les références à des fichiers correspondent à du code aws, ou pyhton, ou autre selon le contexte qui seront fournis en temps voulu.
+VPC
+Le VPC est déjà créé et visible dans le service «VPC», menu de gauche, dans «Cloud Virtuel Privé», cliquer sur «Vos VPC». Le VPC créé pour le projet [en attente de création] y figure dans la liste des VPC s’il y en a plusieurs.
+Il suffit maintenant de créer les points de terminaison (endpoints) qui permettent au VPC d’accéder aux services utilisés.
+Ainsi que les groupes de sécurité, attribués aux endpoints, qui permettent de gérer le traffic entre ces derniers.
+1. Création des groupes de sécurité
+Une fois dans le service «VPC», dans le menu de gauche, dans «Sécurité», aller dans «Groupes de sécurité»:
+Une image contenant texte, logiciel, Icône d’ordinateur, nombre
+Description générée automatiquement, Image
+Groupe de sécurité pour lambda – règle sortante pour S3
+Une fois sur la page des groupes de sécurité, cliquer sur «Créer un groupe de sécurité» en haut à droite.
+Dans la section «Détails de base»:
+«Nom du groupe de sécurité»: «scan-ia-gen-lambda-security-group» NON MODIFIABLE UNE FOIS LE GROUPE CRÉÉ.
+«Description»: «Gere l acces sur le endpoint de la lambda». Les accents et ponctuation ne sont pas acceptés. (Pas d’espaces non plus).
+«VPC»: sélectionner le VPC.
+Dans la section «Règles entrantes»:
+Laisser tel quel sans règlesvarvvv.
+Dvans la section «Règles sortantes»:
+Traffic vers s3: Cliquer sur «Ajouter une règle»:
+Dans la colonne «Type», choisir «HTTPS». Les colonnes «Protocole» et «Plage de ports» vont se mettre à jour toutes seules, avec respectivement les valeurs «TCP» et «443».
+Dans la colonne «Destination», choisir «Personnalisé» et cliquer dans la barre à droite, puis scroller en bas dans «Listes de préfix» et choisir «com.amazonaws.eu-west-3.s3 | pl-23ad484a»:
+Dans la colonne «Description -facultatif» remplir:«Trafic sortant de lambda vers s3 » (PAS D'ESPACES)
+Cliquer sur «Enregistrer les règles» en bas à gauche.
+Cliquer en bas à droite sur «Créer un groupe de sécurité».
+Groupe de sécurité pour les services utilisés par lambda
+Dans le menu de gauche, dans «Sécurité», aller dans «Groupes de sécurité», puis cliquer sur «Créer un groupe de sécurité en haut à droite».
+Dans la section «Détails de base»:
+«Nom du groupe de sécurité»: «scan-ia-gen-services-security-group» NON MODIFIABLE UNE FOIS LE GROUPE CRÉÉ.
+«Description»: «Gere l acces sur les endpoints des services utilises par les lambdas». Les accents et ponctuation ne sont pas acceptés.
+«VPC»: sélectionner le VPC.
+Dans la section «Règles entrantes»:
+Trafic depuis le groupe de sécurité de la lambda: Cliquer sur «ajouter une règle»:
+Dans la colonne «Type», choisir «HTTPS». Les colonnes «Protocole» et «Plage de ports» vont se mettre à jour toutes seules, avec respectivement les valeurs «TCP» et «443»
+Dans la colonne «Destination», choisir «Personnalisé» et cliquer dans la barre à droite, puis scroller en bas dans «Groupe de sécurité» et choisir le groupe de sécurité créé juste avant pour la lambda, «scan-ia-gen-lambda-security-group | id»(l’id sera surement différent que dans l’exemple ici):
+Une image contenant texte, ligne, Police, nombre
+Description générée automatiquement, Image
+Dans la colonne «Description -facultatif» remplir:«Trafic entrant de lambda vers les services utilises»
+Cliquer sur «Enregistrer les règles» en bas à gauche.
+Dans la section «Règles sortantes»:
+Laisser tel quel sans règles. Enlever s'il y a une règle.
+Cliquer en bas à droite sur «Créer un groupe de sécurité».
+Groupe de sécurité pour lambda – règle sortante vers le groupe de sécurité des services utilisés
+Sur le groupe de sécurité de la lambda, nous avons ajouté une règle sortante vers s3. Maintenant que nous avons créé le groupe de sécurité associés aux services utilisés par la lambda, ajoutons une deuxième règle sortante vers ce dernier.
+Dans le menu de gauche, cliquer à nouveau sur «Groupes de sécurité», puis dans le tableau, chercher la ligne correspondante au groupe de sécurité de lambda:
+Une image contenant texte, capture d’écran, nombre, logiciel
+Description générée automatiquement, Image
+Une fois vous avez coché la case, allez en-dessous dans l’onglet «Règles sortantes», puis «Modifier les règles sortantes»:
+Une image contenant texte, capture d’écran, logiciel, nombre
+Description générée automatiquement, Image
+Cliquer sur «Ajouter une règle»:
+Dans la colonne «Type», choisir «HTTPS». Les colonnes «Protocole» et «Plage de ports» vont se mettre à jour toutes seules, avec respectivement les valeurs «TCP» et «443».
+Dans la colonne «Destination», choisir «Personnalisé» et cliquer dans la barre à droite, puis scroller en bas dans «Groupe de sécurité» et choisir le groupe de sécurité créé juste avant pour les services, «scan-ia-gen-services -security-group | id»(l’id sera surement différent que dans l’exemple ici):
+Une image contenant texte, capture d’écran, nombre, Police
+Description générée automatiquement, Image
+Dans la colonne «Description -facultatif» remplir:«Trafic sortant de lambda vers les services utilises»
+Cliquer sur «Enregistrer les règles» en bas à gauche.
+Maintenant les deux groupes de sécurité sont créés. FIN.
+Lors de la création des endpoints au sein du VPC, nous attacherons à chacun d’entre eux un groupe de sécurité.
+2.Création des points de terminaison (endpoint)
+Chaque service utilisé dans le cadre du «moteur IA» doit avoir un endpoint associé dans le VPC, sinon, impossible d’accéder au service.
+Revenir dans le service VPC, sur le menu à gauche, dans «PrivateLink and Lattice», cliquer sur «Points de terminaison», puis en haut à droitecliquer sur «Créer un point de terminaison».
+Une image contenant texte, capture d’écran, logiciel, nombre
+Description générée automatiquement, Image
+Création du endpoint Bedrock runtime
+Dans Paramètres du point de terminaison:
+Renseigner le nom du point du endpoint: «scan-ia-gen-bedrock-runtime-endpoint»
+Cocher «Services AWS» dans le type
+En-dessous, dans Services:
+Taper «bedrock-runtime» dans la barre de recherche et sélectionner la proposition.
+Une image contenant texte, capture d’écran, logiciel, nombre
+Description générée automatiquement, Image
+Puis cocher la ligne:
+Une image contenant texte, capture d’écran, logiciel, nombre
+Description générée automatiquement, Image
+Dans Paramètres réseau :
+Dans VPC, choisir dans le menu déroulant le VPC du projet.
+Dans paramètres supplémentaires:
+Cocher «Activer le nom DNS»
+Cocher «IPv4»
+Dans Sous-réseaux:
+Cocher les lignes où la colonne «Zone de disponibilité» vaut eu-west-3a et eu-west-3b.
+Dans ces mêmes lignes, dans la colonne «ID de sous-réseau» choisir l’unique option du menu déroulant.
+Laisser le Type d’adresse IP sur l’option «IPv4».
+Dans Groupes de sécurité:
+Cocher la ligne correspondant au groupe de sécurité des services utilisés «scan-ia-gen-services-security-group».
+Dans Politique :
+Cliquer sur “Personnalisé”, puis copier-coller le fichier json de politique endpoint correspondant.
+Attention à bien modifier le numéro de compte et de VPC.
+Puis laisser le reste, descendre en bas de la page et cliquer en bas à droite sur «Créer un point de terminaison». FIN.
+Création du endpoint S3
+Dans Paramètres du point de terminaison:
+Renseigner le nom du point du endpoint: «scan-ia-gen-s3-endpoint»
+Cocher «Services AWS» dans le type
+En-dessous, dans Services:
+Taper «s3» dans la barre de recherche et sélectionner la proposition. Attention, pour s3 deux lignes apparaissent: cocher la ligne où le type = «Gateway»:
+Une image contenant texte, capture d’écran, Police, nombre
+Description générée automatiquement, Image
+Dans Paramètres réseau :
+Dans VPC, choisir dans le menu déroulant le VPC du projet.
+Dans Tables de routage:
+Cocher les lignes où la colonne «Nom » finit par eu-west-3a et eu-west-3b.
+Pas de groupe de sécurité pour s3 Gateway.
+Dans Politique :
+Cliquer sur “Personnalisé”, puis copier-coller le fichier json de politique endpoint correspondant.
+Attention à bien modifier le numéro de compte, de VPC, et les repo s3.
+Puis laisser le reste, descendre en bas de la page et cliquer en bas à droite sur «Créer un point de terminaison». FIN.
+Création du endpoint Step functions
+Dans Paramètres du point de terminaison:
+Renseigner le nom du point du endpoint: «scan-ia-gen-stepfunctions-endpoint»
+Cocher «Services AWS» dans le type
+En-dessous, dans Services:
+Taper «states» dans la barre de recherche et sélectionner la proposition. Puis cocher la ligne:
+Une image contenant texte, ligne, logiciel, Police
+Description générée automatiquement, Image
+Dans Paramètres réseau :
+Dans VPC, choisir dans le menu déroulant le VPC du projet.
+Dans paramètres supplémentaires:
+Cocher «Activer le nom DNS»
+Cocher «IPv4»
+Dans Sous-réseaux:
+Cocher les lignes où la colonne «Zone de disponibilité» vaut eu-west-3a et eu-west-3b.
+Dans ces mêmes lignes, dans la colonne «ID de sous-réseau» choisir l’unique option du menu déroulant.
+Laisser le Type d’adresse IP sur l’option «IPv4».
+Dans Groupes de sécurité:
+Cocher la ligne correspondant au groupe de sécurité des services utilisés «scan-ia-gen-services-security-group».
+Dans Politique :
+Cliquer sur “Personnalisé”, puis copier-coller le fihcier json de politique endpoint correspondant.
+Attention à bien modifier le numéro de compte et de VPC.
+Puis laisser le reste, descendre en bas de la page et cliquer en bas à droite sur «Créer un point de terminaison». FIN.
+Création du endpoint Lambda
+Dans Paramètres du point de terminaison:
+Renseigner le nom du point du endpoint: «scan-ia-gen-lambda-endpoint»
+Cocher «Services AWS» dans le type
+En-dessous, dans Services:
+Taper «lambda» dans la barre de recherche et sélectionner la proposition. Puis cocher la ligne:
+Une image contenant texte, Police, ligne, nombre
+Description générée automatiquement, Image
+Dans Paramètres réseau :
+Dans VPC, choisir dans le menu déroulant le VPC du projet.
+Dans paramètres supplémentaires:
+Cocher «Activer le nom DNS»
+Cocher «IPv4»
+Dans Sous-réseaux:
+Cocher les lignes où la colonne «Zone de disponibilité» vaut eu-west-3a et eu-west-3b.
+Dans ces mêmes lignes, dans la colonne «ID de sous-réseau» choisir l’unique option du menu déroulant.
+Laisser le Type d’adresse IP sur l’option «IPv4».
+Dans Groupes de sécurité:
+Cocher la ligne correspondant au groupe de sécurité des services utilisés «scan-ia-gen-lambda-security-group».
+Dans Politique :
+Cliquer sur “Personnalisé”, puis copier-coller le fihcier json de politique endpoint correspondant.
+Attention à bien modifier le numéro de compte et de VPC.
+Puis laisser le reste, descendre en bas de la page et cliquer en bas à droite sur «Créer un point de terminaison». FIN.
+Tous les endpoints sont créés, avec leurs groupes de sécurité attachés. FIN.
+Nous allons passer maintenant à la configuration des rôles avec le service «IAM».
+IAM
+Afin de respecter le principe du moindre privilège nous allons créer un rôle par fonction lambda, et un rôle pour l’orchestrateur Step Functions.
+Nous créons d’abord les politiques, que nous attacherons aux rôles lors de leur création.
+Aller dans le service «IAM».
+1. Création des politiques
+Une politique permet de regrouper les actions autorisées (read, write, etc.., avec plus de précision) pour un ou plusieurs services. Une politique est attachée à un rôle.
+Les fichiers json qui seront mentionnés sont disponible au même endroit que ce guide, dans le dossier “code_config” puis dans le dossier “IAM”.
+Création de la politique pour autoriser la lambda de dézip à interagir avec ses services (Lambda, S3, CloudWatch Logs)
+Une fois dans le service «IAM», dans le menu sur la gauche, dans «Gestion des accès», cliquer en dessous sur «Politiques». Sur l’écran principal, en haut à droite, «Créer une politique».
+Étape 1. Spécifier les autorisations: Cliquer sur l’onglet «JSON», supprimer tout le code présent, et copier-coller le code dans le fichier “lambda_dezip_group_policy.json”.
+MODIFIER le contenu du fichier : Remplacer tous les identifiants de l’ancien compte (photo ci-dessous en jaune) par celui du compte actuel (2eme photo encadré rouge):
+Toujours sur la même page, en haut à droite, cliquer sur votre adresse mail correspondant au compte aws:
+Sur le panneau qui s’ouvre, cliquer sur le bouton pour copier l’ID de compte :
+Puis coller-le à la place de l’ancien ID de compte en jaune sur la première photo.
+Cliquer Suivant.
+Étape 2. Vérifier et créer: Remplir le nom de la politique: «lambda-dezip-group-policy-scan-ia-gen». Et la description: « Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de dezip» (Pas d’accents).
+Cliquer sur «Créer une politique» en bas a droite. FIN.
+La politique est créée, on pourra ensuite l’attribuer au rôle que nous allons créer.
+Création de la politique pour autoriser la lambda de déclenchement à interagir avec ses services (Lambda, Stepfunctions, CloudWatch Logs)
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Politiques». En haut à droite, «Créer une politique».
+Étape 1. Spécifier les autorisations: Cliquer sur l’onglet «JSON», supprimer tout le code présent, et copier-coller le code dans le fichier “lambda_declenchement_group_policy.json”. FAIRE LA MEME PROCEDURE QUE PRECEDEMMENT SUR LE NUMERO DE COMPTE DANS LE FICHIER JSON. Cliquer Suivant.
+Étape 2. Vérifier et créer: Remplir le nom de la politique: «lambda-declenchement-group-policy-scan-ia-gen».  Et la description: « Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de declenchement» (Pas d’accents).
+Cliquer sur «Créer une politique» en bas a droite. FIN.
+La politique est créée, on pourra ensuite l’attribuer au rôle que nous allons créer.
+Création de la politique pour autoriser la lambda principale à interagir avec ses services (S3, Bedrock, Lambda, CloudWatch Logs, et X-Ray)
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Politiques». En haut à droite, «Créer une politique».
+Étape 1. Spécifier les autorisations: Cliquer sur l’onglet «JSON», supprimer tout le code présent, et copier-coller le code dans le fichier “lambda_group_policy.json”. Penser à faire le changement de de l’id du compte dans le fichier JSON. Cliquer Suivant.
+Étape 2. Vérifier et créer: Remplir le nom de la politique: «lambda-group-policy-scan-ia-gen». Et la description: « Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda principale» (Pas d’accents).
+Cliquer sur «Créer une politique» en bas a droite. FIN.
+La politique est créée, on pourra ensuite l’attribuer au rôle que nous allons créer.
+Création de la politique pour autoriser l’ensemble des lambdas à interagir avec le VPC
+Refaire l’opération précédente avec une nouvelle politique:
+Étape 1. Spécifier les autorisations: Cliquer sur l’onglet «JSON», supprimer tout le code présent, et copier-coller le code dans le fichier “lambda_in_vpc_policy.json”. Penser à faire le changement de de l’id du compte dans le fichier JSON. Puis, Cliquer Suivant.
+Étape 2. Vérifier et créer: Remplir le nom de la politique: «lambda-in-vpc-policy-scan-ia-gen». Et la description: « Contient toutes les actions minimales et necessaires pour que la fonction lambda puisse s executer dans un vpc » (Pas d’accents).
+Cliquer sur «Créer une politique» en bas à droite. FIN.
+La politique est créée, on pourra ensuite l’attribuer au rôle que nous allons créer.
+Création de la politique pour autoriser StepFunctions à interagir avec ses services (S3)
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Politiques». En haut à droite, «Créer une politique».
+Étape 1. Spécifier les autorisations: Cliquer sur l’onglet «JSON», supprimer tout le code présent, et copier-coller le code dans le fichier “stepfunctions_group_policy.json”. Penser à faire le changement de de l’id du compte dans le fichier JSON. Cliquer Suivant.
+Étape 2. Vérifier et créer: Remplir le nom de la politique : «stepfunctions-group-policy-scan-ia-gen». Et la description: « Contient toutes les actions minimales et necessaires pour les services utilisees par la machine d etats stepfunctions » (Pas d’accents).
+Cliquer sur «Créer une politique» en bas a droite. FIN.
+La politique est créée, on pourra ensuite l’attribuer au rôle que nous allons créer.
+2. Création des rôles
+Un rôle est attaché à une ressource aws (une fonction lambda par exemple). Il autorise quels appels la lambda peut faire (action d’écriture sur s3, appel a bedrock, etc…). Le principe de moindre privilège impose de créer des rôles en n’attribuant que les permissions nécessaires aux ressources auxquels ils sont associés.
+Création du rôle pour la fonction lambda de déclenchement
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Rôles». En haut à droite, «Créer un rôle».
+Étape 1. Sélectionner une entité de confiance: Choisir «Service AWS», puis sélectionner en dessous dans le menu déroulant, le service «Lambda». Cliquer «Suivant».
+Étape 2. Ajouter des autorisations: Taper dans la barre de recherche le nom des politiques précédemment créées:
+- lambda-declenchement-group-policy-scan-ia-gen
+- lambda-in-vpc-scan-ia-gen
+puis les cocher. Cliquer «Suivant».
+Étape 3. Nommer, vérifier et créer: Remplir le nom du rôle «LambdaDeclenchementRoleForScanIAGen», et la description: «Accorder les permissions minimales necessaires a la fonction Lambda de declenchement pour executer ses taches.». Vérifier que tout est conforme puis cliquer sur «Créer un rôle» en bas à droite. FIN.
+Le rôle est maintenant créé est sera utilisé lors de la création de la fonction lambda au moment de choisir un rôle.
+Création du rôle pour la fonction lambda de dézip
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Rôles». En haut à droite, «Créer un rôle».
+Étape 1. Sélectionner une entité de confiance: Choisir «Service AWS», puis sélectionner en dessous dans le menu déroulant, le service «Lambda». Cliquer «Suivant».
+Étape 2. Ajouter des autorisations: Taper dans la barre de recherche le nom des politiques précédemment créées :
+- lambda-dezip-group-policy-scan-ia-gen
+- lambda-in-vpc-scan-ia-gen
+puis les cocher. Cliquer «Suivant».
+Étape 3. Nommer, vérifier et créer: Remplir le nom du rôle «LambdaDezipRoleForScanIAGen», et la description: «Accorder les permissions minimales necessaires a la fonction Lambda de dezip pour executer ses taches.». Vérifier que tout est conforme puis cliquer sur «Créer un rôle» en bas à droite. FIN.
+Le rôle est maintenant créé est sera utilisé lors de la création de la fonction lambda au moment de choisir un rôle.
+Création du rôle pour la fonction Lambda principale
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Rôles». En haut à droite, «Créer un rôle».
+Étape 1. Sélectionner une entité de confiance: Choisir «Service AWS», puis sélectionner en dessous dans le menu déroulant, le service «Lambda». Cliquer «Suivant».
+Étape 2. Ajouter des autorisations: Taper dans la barre de recherche le nom des politiques précédemment créées:
+- lambda-group-policy-scan-ia-gen
+- lambda-in-vpc-scan-ia-gen
+puis les cocher. Cliquer «Suivant».
+Étape 3. Nommer, vérifier et créer: Remplir le nom du rôle «LambdaRoleForScanIAGen», et la description: «Accorder les permissions minimales necessaires a la fonction Lambda principale pour executer ses taches.»
+ Vérifier que tout est conforme puis cliquer sur «Créer un rôle» en bas à droite. FIN.
+Le rôle est maintenant créé est sera utilisé lors de la création de la fonction lambda au moment de choisir un rôle.
+Création du rôle pour Step Functions
+Dans le menu de gauche, dans «Gestion des accès», cliquer sur «Rôles». En haut à droite, «Créer un rôle».
+Étape 1. Sélectionner une entité de confiance: Choisir «Service AWS», puis sélectionner en dessous dans le menu déroulant, le service «Step Functions ». Cliquer «Suivant».
+Étape 2. Ajouter des autorisations: Une autorisation par défaut est attachée. Cliquer «Suivant».
+Étape 3. Nommer, vérifier et créer: Remplir le nom du rôle «StepFunctionsRoleForScanIAGen», et la description: «Accorder les permissions minimales necessaires a la machine d etat step functions pour executer ses taches.». Vérifier que tout est conforme puis cliquer sur «Créer un rôle» en bas à droite.
+Revenir dans l’écran d’accueil d’IAM, aller dans «Rôles», chercher dans la barre de recherche le rôle qui vient d’être créé, puis ajouter une autorisation à droite, cliquer «ajouter une stratégie», et chercher la politique créée “stepfunctions-group-policy-scan-ia-gen", cocher la ligne correspondante à la politique et cliquer sur ajouter une autorisation» en bas a droite. FIN.
+Le rôle est maintenant créé est sera utilisé lors de la création de la machine Step Functions au moment de choisir un rôle.
+Bedrock
+Aller dans le service “Bedrock”. Dans le menu de gauche, scroller le bas pour voir Bedrock configuration > Accès aux modèles, trouver la ligne Claude 3.5 Sonnet et cliquer sur “Disponible sur demande”, puis sur “Demander l’accès au modèle”. Deux cas possibles :
+Première demande d’accès : Remplir le formulaire et envoyer la demande.
+Première demande déjà faite : La demande se fait directement après avoir cliqué sur “Demander l’accès au modèle”.
+S3
+Création du squelette
+Dans le service «S3», aller dans Créer un bucket prod: “scan-ia-gen", puis créer l’arborescence suivante:
+Une fois dans le bucket, créer les dossiers suivants, tous au même au niveau et enfants du bucket:
+«config» (config du LLM qui génère les analyses)
+«construction_pdf» (données stockées par CR temporairement pendant le traitement)
+Créer comme enfants de ce dossier:
+«images_CR»
+« images_template»
+Créer dans ce dossier le dossier:
+« pages_chapitre »
+«few-shot» (exemples few shot pour le LLM qui génère les analyses)
+Créer comme enfants de ce dossier:
+«assistant_text»
+«user_text»
+«user_images»
+«pdf_CR_zip» (fichier zippé contenant les pdfs des CRs avec les graphiques)
+«pdf_CR_dezip» (fichiers pdfs extraits de l’archive)
+«resume» (config du LLM qui génère les titres)
+«sortie» (pdf final par CR)
+Remplir le squelette avec les données
+Remplir les dossiers avec les fichiers joints.
+Lambda
+Nous allons procéder à la création des trois fonctions lambdas utilisées dans le cadre du projet.
+Fonction lambda de dézip
+Rôle: Cette Lambda permet de dézipper et extraire le contenu de l’archive dans le repo correspondant dans s3.
+Création de la fonction lambda
+Aller dans lambda, puis dans le menu de gauche «Fonctions», et une fois dans la page, sélectionner le bouton «Créer une fonction».
+Choisir «créer à partir de zéro»
+Nommer la fonction «SCAN_IA_GEN_lambda_dezip_py_3_12»
+Entrer les informations de base (Nom de la fonction, Exécution= «Python 3.12», Architecture=«x86_64»)
+Modifier le rôle d’exécution par défaut > «Utiliser un rôle existant» et choisir le rôle créé pour la fonction lambda de dézip «LambaDezipRoleForScanIAGen».
+Dans «Configurations supplémentaires» cocher «Activer VPC»,
+Choisir le VPC créé pour le projet
+Dans «Sous-réseaux», sélectionner les deux sous réseaux «eu-west-3a» et «eu-west-3b»
+Dans «Groupe de sécurité», choisir le groupe créé pour lambda «scan-ia-gen-lambda-security-group»
+Cliquer sur «Créer une fonction». FIN.
+Configuration de la fonction
+Cliquer sur la fonction Lambda créée, Cliquer sur l’onglet «Configuration», puis aller dans «Configuration générale», et cliquer «Modifier»:
+Mettre la Mémoire au maximum soit 10240 Mo
+Ne pas toucher à la mémoire du magasin éphémère (le laisser au minimum soit 512 Mo, si a plus par défaut, le mettre à 512 Mo)
+Mettre l’Expiration au maximum soit à 15 min. 0 s
+Cliquer «Enregistrer». FIN.
+Ajout du des fichiers de code dans la fonction Lambda
+Nécessite le .zip sur les fichier de code de la lambda dezip.
+Une fois dans la fonction Lambda, aller sur l’onglet «Code», puis sur la gauche, cliquer sur le fichier python se trouvant dans l’explorateur de fichier et le supprimer. Glisser-déposer l’ensemble des fichiers python dans l’explorateur de fichiers sur la gauche. Juste en dessous, cliquer sur «Deploy».
+Fonction lambda de déclenchement
+Rôle: Cette Lambda permet de déclencher le traitement (l’orchestrateur step functions) suite à l’arrivé du fichier.zip dans le repo s3.
+Création de la fonction lambda
+Aller dans lambda, puis dans le menu de gauche «Fonctions», et une fois dans la page, sélectionner le bouton «Créer une fonction».
+Nommer la fonction «SCAN_IA_GEN_lambda_declenchement_py_3_12»
+Choisir «créer à partir de zéro»
+Entrer les informations de base (Nom de la fonction, Exécution= «Python 3.12», Architecture=«x86_64»)
+Modifier le rôle d’exécution par défaut > «Utiliser un rôle existant» et choisir le rôle créé pour la fonction lambda de déclenchement: «LambdaDeclenchementRoleForScanIAGen».
+Dans «Configurations supplémentaires» cocher «Activer VPC»,
+Choisir le VPC créé pour le projet
+Dans «Sous-réseaux», sélectionner les deux sous réseaux «eu-west-3a» et «eu-west-3b»
+Dans «Groupe de sécurité», choisir le groupe créé pour lambda «scan-ia-gen-lambda-security-group»
+Cliquer sur «Créer une fonction». FIN.
+Configuration de la fonction
+Cliquer sur la fonction Lambda créée, Cliquer sur l’onglet «Configuration», puis aller dans «Configuration générale», et cliquer «Modifier»:
+Mettre la mémoire au maximum soit 10240 Mo
+Ne pas toucher à la mémoire du magasin éphémère (le laisser au minimum soit 512 Mo, si a plus par défaut, le mettre à 512 Mo)
+Mettre l’expiration à 5 min. 0 s
+Cliquer «Enregistrer». FIN.
+Ajout et configuration du déclencheur
+Ce dernier permet à la fonction lambda de se déclencher au dépôt d’un fichier .zip dans un repo spécifié.
+Remonter sur l’écran d’acceuil de la fonction lambda et cliquer sur «Ajouter un déclencheur»(le bloc avec s3 apparait sur la capture car le déclencheur est déjà créé à ce moment):
+Tapez «s3» dans la barre de recherche et cliquer sur la source qui correspond:
+Ensuite,
+Choisir le bucket créé pour la prod
+Laisser tous les évènements de création d’objet
+Renseigner le préfixe: «pdf_CR_zip/» (bien mettre le «/» à la fin).
+Renseigner le suffixe: «.zip»
+Cocher la case Appel Récursif
+Clique sur «Ajouter» en bas à droite.
+FIN.
+Ajout du des fichiers de code dans la fonction Lambda
+Nécessite le .zip sur les fichier de code de la lambda declenchement.
+Une fois dans la fonction Lambda, aller sur l’onglet «Code», puis sur la gauche, cliquer sur le fichier python se trouvant dans l’explorateur de fichier et le supprimer. Glisser-déposer l’ensemble des fichiers python dans l’explorateur de fichiers sur la gauche. Juste en dessous, cliquer sur «Deploy».
+Fonction lambda principale
+Rôle: Cette Lambda permet le traitement principal pour une CR (traitement des graphiques, génération des analyses textuelles, construction du pdf final).
+Création de la fonction lambda
+Aller dans lambda, puis dans le menu de gauche «Fonctions», et une fois dans la page, sélectionner le bouton «Créer une fonction».
+Nommer la fonction «SCAN_IA_GEN_lambda_py_3_12»
+Choisir «créer à partir de zéro»
+Entrer les informations de base (Nom de la fonction, Exécution= «Python 3.12», Architecture=«x86_64»)
+Modifier le rôle d’exécution par défaut «Utiliser un rôle existant» et choisir le rôle créé pour la fonction lambda principale: «LambdaRoleForScanIAGen».
+Dans «Configurations supplémentaires» cocher «Activer VPC»,
+Choisir le VPC créé pour le projet
+Dans «Sous-réseaux», sélectionner les deux sous réseaux «eu-west-3a» et «eu-west-3b»
+Dans «Groupe de sécurité», choisir le groupe créé pour lambda «scan-ia-gen-lambda-security-group»
+Cliquer sur «Créer une fonction». FIN.
+Configuration de la fonction
+Cliquer sur la fonction Lambda créée, Cliquer sur l’onglet «Configuration», puis aller dans «Configuration générale», et cliquer «Modifier»:
+Mettre la Mémoire au maximum soit 10240 Mo
+Ne pas toucher à la mémoire du magasin éphémère (le laisser au minimum soit 512 Mo, si a plus par défaut, le mettre à 512 Mo)
+Mettre l’Expiration au maximum soit à 15 min. 0 s
+Cliquer «Enregistrer». FIN.
+Création de la couche personnalisée
+Aller dans Lambda, puis dans le menu de gauche, dans «Ressources supplémentaires», cliquer totu en bas de la page sur « Couches », puis en haut à droite sur «Créer une couche».
+Remplir le nom de la couche: «SCAN_IA_GEN_lambda-lambda-layer-python-3-12»
+Description de la couche: «librairies python externes aws nécessaires aux projets»
+Cliquer sur«charger un fichier .zip»: charger depuis votre poste le fichier zip correspondant aux packages pythons utilisés
+Architectures compatibles: choisir «x86_64»
+Exécutions compatibles: choisir dans la liste uniquement «Python 3.12»
+Cliquer sur «créer» en bas à droite.
+La couche est maintenant créée est sera visible pour la prochaine partie. FIN.
+Ajout de la couche à la fonction Lambda
+Aller sur la fonction lambda, dans le diagramme visible sur la page d’accueil de la fonction lambda créée, cliquer sur «Layers», puis dans «Couches», «Ajouter une couche».
+Cliquer «Couches personnalisées» et choisir la couche créée précédemment avec la version la plus récente. Et cliquer sur «Ajouter» en bas à droite.
+Reproduire l’opération et cette fois choisir «Couches AWS» et choisir la couche «AWSLambdaPowertoolsPythonV2» et prendre la version la plus récente.
+Les couches devraient maintenant être au nombre de 2. FIN.
+Ajout du des fichiers de code dans la fonction Lambda
+Nécessite le .zip sur les fichier de code de la lambda principale.
+Une fois dans la fonction Lambda, aller sur l’onglet «Code», puis sur la gauche, cliquer sur le fichier python se trouvant dans l’explorateur de fichier et le supprimer. Glisser-déposer l’ensemble des fichiers python dans l’explorateur de fichiers sur la gauche. Juste en dessous, cliquer sur «Deploy».
+FIN.
+Les trois fonctions lambda ainsi que les couches nécessaires sont maintenant créées.
+Nous allons maintenant passer à l’orchestrateur macro c’est-à-dire la machine d’état avec le service Step Functions.
+Step Function
+Dans le service Step Function, aller dans le menu à gauche, «Machines d’état», puis «Créer une machine d’état», choisir la configuration vierge «Blank», cliquer sur «Sélectionnez» en bas à droite.
+Une fois sur la page de la machine d’état:
+La renommer en haut à gauche avec le nom voulu
+Aller dans l’onglet «{} Code», effacer tout le code se trouvant dans l’éditeur,
+Glisser-déposer le code se trouvant l’espace Teams, dans l’espace Json prévu sur la gauche, appuyer sur «Format»:
+Puis, exactement comme pour les fichiers JSON sur les politiques IAM ici, remplacer les     ocurrences de l’id de compte par celui en haut à droite de votre fenêtre.
+Puis sur le menu qui s’ouvre à droite, dans l’onglet «Configuration», scroller vers le bas dans «Paramètre de l’API», «Nom de la Fonction», choisir dans le menu déroulant juste en dessous la bonne fonction Lambda précédemment créée.
+Aller dans l’onglet «Configuration»:
+Dans «Détails», mettre le nom à jour: “SCAN_IA_GEN_macro” et le Type à «Standard»
+Dans «Autorisations» Choisir un rôle existant et mettre le rôle créé
+Dans «Journalisation» Mettre niveau de journalisation sur «ALL»,
+Dans «Configuration supplémentaires» cocher «Activer le suivi X-Ray»
+En haut à droite cliquer sur «Créer». FIN.
+Ajout de la machine d’état comme variable d’environnement de la fonction lambda de déclenchement
+Aller dans step functions cliquer sur la machine d’état créée puis copier-coller l’ARN de la machine d’état :
+Puis aller dans le service lambda, sélectionner la fonction de déclenchement. Une fois sur la fonction lambda, aller dans l’onglet “Configuration”, puis sur le menu à gauche, cliquer sur “Variables d’environnement” et cliquer sur “Modifier” :
+Ensuite, cliquer pour ajouter une variable d’environnement. Pour la clé, rentrer : “STATE_MACHINE_ARN” et pour la valeur coller l’ARN copié juste avant :
+Cliquer sur “Enregistrer”.
+FIN DE L’INSTALLATION.gitlba
