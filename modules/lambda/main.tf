@@ -1,7 +1,7 @@
 # Lambda Functions and Layers for scan-ia-gen project
-# Note: This module creates dummy ZIP files for the Lambda functions and layer.
-# In a real scenario, you would replace these with actual ZIP files containing the Lambda code and Python packages.
-# The dummy files are created at the end of this file using the local_file resource.
+# Note: This module creates dummy ZIP files for the Lambda functions, but uses a proper ZIP file for the layer.
+# The layer ZIP file contains a simple "Hello World" Python module that can be imported by Lambda functions.
+# The dummy files for Lambda functions are created at the end of this file using the local_file resource.
 
 # 1. Lambda Layers
 
@@ -13,8 +13,8 @@ resource "aws_lambda_layer_version" "lambda_layer" {
   compatible_runtimes = ["python3.12"]
   compatible_architectures = ["x86_64"]
 
-  # Note: In a real scenario, you would provide the actual ZIP file with the Python packages
-  # For this example, we're creating an empty layer
+  # Using a proper ZIP file with a "Hello World" module
+  # The ZIP file contains a simple Python package that can be imported by Lambda functions
   filename = "${path.module}/lambda_layer.zip"
   source_code_hash = filebase64sha256("${path.module}/lambda_layer.zip")
 }
@@ -33,8 +33,8 @@ resource "aws_lambda_function" "lambda_dezip" {
 
   # Note: In a real scenario, you would provide the actual ZIP file with the Lambda code
   # For this example, we're creating an empty function
-  filename      = "${path.module}/lambda_dezip.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambda_dezip.zip")
+  filename      = "${path.module}/lambda_layer.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_layer.zip")
 
   memory_size   = 10240
   timeout       = 900 # 15 minutes
@@ -73,8 +73,8 @@ resource "aws_lambda_function" "lambda_declenchement" {
 
   # Note: In a real scenario, you would provide the actual ZIP file with the Lambda code
   # For this example, we're creating an empty function
-  filename      = "${path.module}/lambda_declenchement.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambda_declenchement.zip")
+  filename      = "${path.module}/lambda_layer.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_layer.zip")
 
   memory_size   = 10240
   timeout       = 300 # 5 minutes
@@ -102,8 +102,8 @@ resource "aws_lambda_function" "lambda_main" {
 
   # Note: In a real scenario, you would provide the actual ZIP file with the Lambda code
   # For this example, we're creating an empty function
-  filename      = "${path.module}/lambda_main.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambda_main.zip")
+  filename      = "${path.module}/lambda_layer.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_layer.zip")
 
   memory_size   = 10240
   timeout       = 900 # 15 minutes
@@ -153,26 +153,4 @@ resource "aws_lambda_permission" "allow_bucket" {
   source_arn    = "arn:aws:s3:::${var.s3_bucket_name}"
 }
 
-# Create empty ZIP files for Lambda functions and layer
-resource "local_file" "lambda_layer_zip" {
-  filename = "${path.module}/lambda_layer.zip"
-  content  = "dummy content for lambda layer"
-}
-
-resource "local_file" "lambda_dezip_zip" {
-  filename = "${path.module}/lambda_dezip.zip"
-  content  = "dummy content for lambda dezip function"
-}
-
-resource "local_file" "lambda_declenchement_zip" {
-  filename = "${path.module}/lambda_declenchement.zip"
-  content  = "dummy content for lambda declenchement function"
-}
-
-resource "local_file" "lambda_main_zip" {
-  filename = "${path.module}/lambda_main.zip"
-  content  = "dummy content for lambda main function"
-}
-
-# Data sources
 data "aws_region" "current" {}

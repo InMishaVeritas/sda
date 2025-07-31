@@ -8,7 +8,7 @@ resource "aws_security_group" "lambda_security_group" {
   vpc_id      = var.vpc_id
 
   # No inbound rules initially
-  
+
   # Outbound rule for S3
   egress {
     from_port   = 443
@@ -20,6 +20,10 @@ resource "aws_security_group" "lambda_security_group" {
 
   tags = {
     Name = "${var.project_name}-lambda-security-group"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -63,7 +67,7 @@ resource "aws_vpc_endpoint" "s3_endpoint" {
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = data.aws_route_tables.vpc_route_tables.ids
-  
+
   tags = {
     Name = "${var.project_name}-s3-endpoint"
   }
@@ -97,7 +101,7 @@ resource "aws_vpc_endpoint" "bedrock_runtime_endpoint" {
   subnet_ids         = var.subnet_ids
   security_group_ids = [aws_security_group.services_security_group.id]
   private_dns_enabled = true
-  
+
   tags = {
     Name = "${var.project_name}-bedrock-runtime-endpoint"
   }
@@ -116,6 +120,14 @@ resource "aws_vpc_endpoint" "bedrock_runtime_endpoint" {
       }
     ]
   })
+
+  # Ensure this endpoint is destroyed before the security group
+  depends_on = [aws_security_group.services_security_group]
+
+  # Add lifecycle configuration to handle deletion properly
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Step Functions Interface Endpoint
@@ -126,7 +138,7 @@ resource "aws_vpc_endpoint" "stepfunctions_endpoint" {
   subnet_ids         = var.subnet_ids
   security_group_ids = [aws_security_group.services_security_group.id]
   private_dns_enabled = true
-  
+
   tags = {
     Name = "${var.project_name}-stepfunctions-endpoint"
   }
@@ -146,6 +158,14 @@ resource "aws_vpc_endpoint" "stepfunctions_endpoint" {
       }
     ]
   })
+
+  # Ensure this endpoint is destroyed before the security group
+  depends_on = [aws_security_group.services_security_group]
+
+  # Add lifecycle configuration to handle deletion properly
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Lambda Interface Endpoint
@@ -156,7 +176,7 @@ resource "aws_vpc_endpoint" "lambda_endpoint" {
   subnet_ids         = var.subnet_ids
   security_group_ids = [aws_security_group.lambda_security_group.id]
   private_dns_enabled = true
-  
+
   tags = {
     Name = "${var.project_name}-lambda-endpoint"
   }
@@ -181,7 +201,7 @@ data "aws_region" "current" {}
 
 data "aws_route_tables" "vpc_route_tables" {
   vpc_id = var.vpc_id
-  
+
   filter {
     name   = "association.subnet-id"
     values = var.subnet_ids

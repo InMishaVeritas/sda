@@ -6,7 +6,7 @@
 resource "aws_iam_policy" "lambda_dezip_group_policy" {
   name        = "lambda-dezip-group-policy-${var.project_name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de dezip"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -40,7 +40,7 @@ resource "aws_iam_policy" "lambda_dezip_group_policy" {
 resource "aws_iam_policy" "lambda_declenchement_group_policy" {
   name        = "lambda-declenchement-group-policy-${var.project_name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de declenchement"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -68,7 +68,7 @@ resource "aws_iam_policy" "lambda_declenchement_group_policy" {
 resource "aws_iam_policy" "lambda_group_policy" {
   name        = "lambda-group-policy-${var.project_name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda principale"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -118,7 +118,7 @@ resource "aws_iam_policy" "lambda_group_policy" {
 resource "aws_iam_policy" "lambda_in_vpc_policy" {
   name        = "lambda-in-vpc-policy-${var.project_name}"
   description = "Contient toutes les actions minimales et necessaires pour que la fonction lambda puisse s executer dans un vpc"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -141,7 +141,7 @@ resource "aws_iam_policy" "lambda_in_vpc_policy" {
 resource "aws_iam_policy" "stepfunctions_group_policy" {
   name        = "stepfunctions-group-policy-${var.project_name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la machine d etats stepfunctions"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -172,6 +172,22 @@ resource "aws_iam_policy" "stepfunctions_group_policy" {
         ]
         Effect   = "Allow"
         Resource = "*"
+      },
+      # Add CloudWatch Logs permissions
+      {
+        Action = [
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutLogEvents",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+          "logs:DescribeLogGroups"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
       }
     ]
   })
@@ -183,7 +199,7 @@ resource "aws_iam_policy" "stepfunctions_group_policy" {
 resource "aws_iam_role" "lambda_declenchement_role" {
   name = "LambdaDeclenchementRoleFor${title(var.project_name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda de declenchement pour executer ses taches."
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -213,7 +229,7 @@ resource "aws_iam_role_policy_attachment" "lambda_declenchement_vpc_policy_attac
 resource "aws_iam_role" "lambda_dezip_role" {
   name = "LambdaDezipRoleFor${title(var.project_name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda de dezip pour executer ses taches."
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -243,7 +259,7 @@ resource "aws_iam_role_policy_attachment" "lambda_dezip_vpc_policy_attachment" {
 resource "aws_iam_role" "lambda_role" {
   name = "LambdaRoleFor${title(var.project_name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda principale pour executer ses taches."
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -273,7 +289,7 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy_attachment" {
 resource "aws_iam_role" "step_functions_role" {
   name = "StepFunctionsRoleFor${title(var.project_name)}"
   description = "Accorder les permissions minimales necessaires a la machine d etat step functions pour executer ses taches."
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
