@@ -1,9 +1,7 @@
-# VPC Security Groups and Endpoints for scan-ia-gen project
+data "aws_region" "current" {}
 
-# 1. Security Groups
-# Lambda Security Group
 resource "aws_security_group" "lambda_security_group" {
-  name        = "${var.project_name}-lambda-security-group"
+  name        = "${var.project_name}-${data.aws_region.current.name}-lambda-security-group"
   description = "Gere l acces sur le endpoint de la lambda"
   vpc_id      = var.vpc_id
 
@@ -19,7 +17,7 @@ resource "aws_security_group" "lambda_security_group" {
   }
 
   tags = {
-    Name = "${var.project_name}-lambda-security-group"
+    Name = "${var.project_name}-${data.aws_region.current.name}-lambda-security-group"
   }
 
   lifecycle {
@@ -29,7 +27,7 @@ resource "aws_security_group" "lambda_security_group" {
 
 # Services Security Group
 resource "aws_security_group" "services_security_group" {
-  name        = "${var.project_name}-services-security-group"
+  name        = "${var.project_name}-${data.aws_region.current.name}-services-security-group"
   description = "Gere l acces sur les endpoints des services utilises par les lambdas"
   vpc_id      = var.vpc_id
 
@@ -45,7 +43,7 @@ resource "aws_security_group" "services_security_group" {
   # No outbound rules
 
   tags = {
-    Name = "${var.project_name}-services-security-group"
+    Name = "${var.project_name}-${data.aws_region.current.name}-services-security-group"
   }
 }
 
@@ -69,7 +67,7 @@ resource "aws_vpc_endpoint" "s3_endpoint" {
   route_table_ids   = data.aws_route_tables.vpc_route_tables.ids
 
   tags = {
-    Name = "${var.project_name}-s3-endpoint"
+    Name = "${var.project_name}-${data.aws_region.current.name}-s3-endpoint"
   }
 
   policy = jsonencode({
@@ -85,8 +83,8 @@ resource "aws_vpc_endpoint" "s3_endpoint" {
         Effect = "Allow"
         Principal = "*"
         Resource = [
-          "arn:aws:s3:::${var.project_name}",
-          "arn:aws:s3:::${var.project_name}/*"
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}",
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}/*"
         ]
       }
     ]
@@ -103,7 +101,7 @@ resource "aws_vpc_endpoint" "bedrock_runtime_endpoint" {
   private_dns_enabled = true
 
   tags = {
-    Name = "${var.project_name}-bedrock-runtime-endpoint"
+    Name = "${var.project_name}-${data.aws_region.current.name}-bedrock-runtime-endpoint"
   }
 
   policy = jsonencode({
@@ -140,7 +138,7 @@ resource "aws_vpc_endpoint" "stepfunctions_endpoint" {
   private_dns_enabled = true
 
   tags = {
-    Name = "${var.project_name}-stepfunctions-endpoint"
+    Name = "${var.project_name}-${data.aws_region.current.name}-stepfunctions-endpoint"
   }
 
   policy = jsonencode({
@@ -154,7 +152,7 @@ resource "aws_vpc_endpoint" "stepfunctions_endpoint" {
         ]
         Effect = "Allow"
         Principal = "*"
-        Resource = "arn:aws:states:${data.aws_region.current.name}:${var.account_id}:stateMachine:${var.project_name}-macro"
+        Resource = "arn:aws:states:${data.aws_region.current.name}:${var.account_id}:stateMachine:${var.project_name}-${data.aws_region.current.name}-macro"
       }
     ]
   })
@@ -178,7 +176,7 @@ resource "aws_vpc_endpoint" "lambda_endpoint" {
   private_dns_enabled = true
 
   tags = {
-    Name = "${var.project_name}-lambda-endpoint"
+    Name = "${var.project_name}-${data.aws_region.current.name}-lambda-endpoint"
   }
 
   policy = jsonencode({
@@ -196,8 +194,6 @@ resource "aws_vpc_endpoint" "lambda_endpoint" {
   })
 }
 
-# Data sources
-data "aws_region" "current" {}
 
 data "aws_route_tables" "vpc_route_tables" {
   vpc_id = var.vpc_id

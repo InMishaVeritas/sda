@@ -13,6 +13,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project = "scan-ia-gen"
+      Region = var.aws_region
     }
   }
 }

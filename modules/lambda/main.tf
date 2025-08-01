@@ -1,13 +1,7 @@
-# Lambda Functions and Layers for scan-ia-gen project
-# Note: This module creates dummy ZIP files for the Lambda functions, but uses a proper ZIP file for the layer.
-# The layer ZIP file contains a simple "Hello World" Python module that can be imported by Lambda functions.
-# The dummy files for Lambda functions are created at the end of this file using the local_file resource.
+data "aws_region" "current" {}
 
-# 1. Lambda Layers
-
-# Custom Lambda Layer
 resource "aws_lambda_layer_version" "lambda_layer" {
-  layer_name = "${var.project_name}-lambda-layer-python-3-12"
+  layer_name = "${var.project_name}-${data.aws_region.current.name}-lambda-layer-python-3-12"
   description = "librairies python externes aws nécessaires aux projets"
 
   compatible_runtimes = ["python3.12"]
@@ -23,7 +17,7 @@ resource "aws_lambda_layer_version" "lambda_layer" {
 
 # Lambda Dezip Function
 resource "aws_lambda_function" "lambda_dezip" {
-  function_name = "${upper(var.project_name)}_lambda_dezip_py_3_12"
+  function_name = "${upper(var.project_name)}_${data.aws_region.current.name}_lambda_dezip_py_3_12"
   description   = "Lambda function to unzip and extract content from archive in S3"
 
   role          = var.lambda_dezip_role_arn
@@ -63,7 +57,7 @@ resource "aws_lambda_function" "lambda_dezip" {
 
 # Lambda Declenchement Function
 resource "aws_lambda_function" "lambda_declenchement" {
-  function_name = "${upper(var.project_name)}_lambda_declenchement_py_3_12"
+  function_name = "${upper(var.project_name)}_${data.aws_region.current.name}_lambda_declenchement_py_3_12"
   description   = "Lambda function to trigger the Step Functions state machine"
 
   role          = var.lambda_declenchement_role_arn
@@ -92,7 +86,7 @@ resource "aws_lambda_function" "lambda_declenchement" {
 
 # Lambda Main Function
 resource "aws_lambda_function" "lambda_main" {
-  function_name = "${upper(var.project_name)}_lambda_py_3_12"
+  function_name = "${upper(var.project_name)}_${data.aws_region.current.name}_lambda_py_3_12"
   description   = "Main Lambda function for processing CR (graphics, text analysis, PDF construction)"
 
   role          = var.lambda_role_arn
@@ -153,4 +147,3 @@ resource "aws_lambda_permission" "allow_bucket" {
   source_arn    = "arn:aws:s3:::${var.s3_bucket_name}"
 }
 
-data "aws_region" "current" {}

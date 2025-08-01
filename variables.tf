@@ -2,6 +2,12 @@ variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
   default     = "eu-west-3" # Paris region as specified in the requirements
+
+  # Allow overriding the region using an environment variable
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]+$", var.aws_region))
+    error_message = "The aws_region must be a valid AWS region format (e.g., eu-west-3)."
+  }
 }
 
 variable "project_name" {
@@ -15,7 +21,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "IDs of the subnets in eu-west-3a and eu-west-3b"
+  description = "IDs of the subnets in the selected region's availability zones"
   type        = list(string)
 }
 

@@ -1,10 +1,7 @@
-# IAM Roles and Policies for scan-ia-gen project
+data "aws_region" "current" {}
 
-# 1. IAM Policies
-
-# Lambda Dezip Group Policy
 resource "aws_iam_policy" "lambda_dezip_group_policy" {
-  name        = "lambda-dezip-group-policy-${var.project_name}"
+  name        = "lambda-dezip-group-policy-${var.project_name}-${data.aws_region.current.name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de dezip"
 
   policy = jsonencode({
@@ -19,8 +16,8 @@ resource "aws_iam_policy" "lambda_dezip_group_policy" {
         ]
         Effect   = "Allow"
         Resource = [
-          "arn:aws:s3:::${var.project_name}",
-          "arn:aws:s3:::${var.project_name}/*"
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}",
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}/*"
         ]
       },
       {
@@ -38,7 +35,7 @@ resource "aws_iam_policy" "lambda_dezip_group_policy" {
 
 # Lambda Declenchement Group Policy
 resource "aws_iam_policy" "lambda_declenchement_group_policy" {
-  name        = "lambda-declenchement-group-policy-${var.project_name}"
+  name        = "lambda-declenchement-group-policy-${var.project_name}-${data.aws_region.current.name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda de declenchement"
 
   policy = jsonencode({
@@ -49,7 +46,7 @@ resource "aws_iam_policy" "lambda_declenchement_group_policy" {
           "states:StartExecution"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:states:*:${var.account_id}:stateMachine:${var.project_name}-macro"
+        Resource = "arn:aws:states:*:${var.account_id}:stateMachine:${var.project_name}-${data.aws_region.current.name}-macro"
       },
       {
         Action = [
@@ -66,7 +63,7 @@ resource "aws_iam_policy" "lambda_declenchement_group_policy" {
 
 # Lambda Group Policy
 resource "aws_iam_policy" "lambda_group_policy" {
-  name        = "lambda-group-policy-${var.project_name}"
+  name        = "lambda-group-policy-${var.project_name}-${data.aws_region.current.name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la fonction lambda principale"
 
   policy = jsonencode({
@@ -81,8 +78,8 @@ resource "aws_iam_policy" "lambda_group_policy" {
         ]
         Effect   = "Allow"
         Resource = [
-          "arn:aws:s3:::${var.project_name}",
-          "arn:aws:s3:::${var.project_name}/*"
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}",
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}/*"
         ]
       },
       {
@@ -116,7 +113,7 @@ resource "aws_iam_policy" "lambda_group_policy" {
 
 # Lambda in VPC Policy
 resource "aws_iam_policy" "lambda_in_vpc_policy" {
-  name        = "lambda-in-vpc-policy-${var.project_name}"
+  name        = "lambda-in-vpc-policy-${var.project_name}-${data.aws_region.current.name}"
   description = "Contient toutes les actions minimales et necessaires pour que la fonction lambda puisse s executer dans un vpc"
 
   policy = jsonencode({
@@ -139,7 +136,7 @@ resource "aws_iam_policy" "lambda_in_vpc_policy" {
 
 # Step Functions Group Policy
 resource "aws_iam_policy" "stepfunctions_group_policy" {
-  name        = "stepfunctions-group-policy-${var.project_name}"
+  name        = "stepfunctions-group-policy-${var.project_name}-${data.aws_region.current.name}"
   description = "Contient toutes les actions minimales et necessaires pour les services utilisees par la machine d etats stepfunctions"
 
   policy = jsonencode({
@@ -159,8 +156,8 @@ resource "aws_iam_policy" "stepfunctions_group_policy" {
         ]
         Effect   = "Allow"
         Resource = [
-          "arn:aws:s3:::${var.project_name}",
-          "arn:aws:s3:::${var.project_name}/*"
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}",
+          "arn:aws:s3:::${var.project_name}-${data.aws_region.current.name}/*"
         ]
       },
       {
@@ -197,7 +194,7 @@ resource "aws_iam_policy" "stepfunctions_group_policy" {
 
 # Lambda Declenchement Role
 resource "aws_iam_role" "lambda_declenchement_role" {
-  name = "LambdaDeclenchementRoleFor${title(var.project_name)}"
+  name = "LambdaDeclenchementRoleFor${title(var.project_name)}${title(data.aws_region.current.name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda de declenchement pour executer ses taches."
 
   assume_role_policy = jsonencode({
@@ -227,7 +224,7 @@ resource "aws_iam_role_policy_attachment" "lambda_declenchement_vpc_policy_attac
 
 # Lambda Dezip Role
 resource "aws_iam_role" "lambda_dezip_role" {
-  name = "LambdaDezipRoleFor${title(var.project_name)}"
+  name = "LambdaDezipRoleFor${title(var.project_name)}${title(data.aws_region.current.name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda de dezip pour executer ses taches."
 
   assume_role_policy = jsonencode({
@@ -257,7 +254,7 @@ resource "aws_iam_role_policy_attachment" "lambda_dezip_vpc_policy_attachment" {
 
 # Lambda Main Role
 resource "aws_iam_role" "lambda_role" {
-  name = "LambdaRoleFor${title(var.project_name)}"
+  name = "LambdaRoleFor${title(var.project_name)}${title(data.aws_region.current.name)}"
   description = "Accorder les permissions minimales necessaires a la fonction Lambda principale pour executer ses taches."
 
   assume_role_policy = jsonencode({
@@ -287,7 +284,7 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy_attachment" {
 
 # Step Functions Role
 resource "aws_iam_role" "step_functions_role" {
-  name = "StepFunctionsRoleFor${title(var.project_name)}"
+  name = "StepFunctionsRoleFor${title(var.project_name)}${title(data.aws_region.current.name)}"
   description = "Accorder les permissions minimales necessaires a la machine d etat step functions pour executer ses taches."
 
   assume_role_policy = jsonencode({
